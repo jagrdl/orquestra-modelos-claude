@@ -1,6 +1,6 @@
 # Orquestra de Modelos — Claude Code
 
-Plugin **genérico**, independente de produto, repositório, linguagem e sistema operacional. Organiza tarefas com **Opus para planejamento**, **Sonnet para coordenação** e **Haiku para execução**.
+Plugin **genérico**, independente de produto, repositório, linguagem e sistema operacional. Organiza tarefas com **Opus para planejamento**, **Sonnet para coordenação** e **Haiku para execução**. Em tarefa complexa demais para o Haiku, o Sonnet pode implementar, revisar ou testar via o subagente `especialista-sonnet`, como exceção com motivo registrado.
 
 Pode ser usado em projetos web, APIs, aplicações móveis, bibliotecas, infraestrutura, automações, documentação e repositórios de qualquer organização.
 
@@ -44,14 +44,14 @@ O plugin **não pressupõe** GitHub Projects, GitHub CLI, monorepo, branches esp
 | Sessão | Papel | Operações |
 | --- | --- | --- |
 | Opus | Planejamento e contratos | Cria plano em `~/.claude/orquestra-plans/` e entrega a uma sessão Sonnet |
-| Sonnet | Coordenação e integração | Delegação, validação de evidências e relatório |
+| Sonnet | Coordenação e integração | Delegação, validação de evidências e relatório; exceção: subagente `especialista-sonnet` |
 | Haiku | Execução | Edição de código, testes, investigação e revisão por subagentes |
 
 O hook bloqueia implementações diretas de Opus/Sonnet, salvo pedido explícito para executar sem delegação. Detalhes em [`ORQUESTRACAO.md`](ORQUESTRACAO.md).
 
 ## Arquivos
 
-- `agents/`: quatro subagentes especializados por esforço/atividade; sem lógica de projeto.
+- `agents/`: cinco subagentes sem lógica de projeto: `executor`, `implementer`, `implementer-pesado`, `reviewer` (Haiku) e `especialista-sonnet` (Sonnet, esforço alto, exceção).
 - `hooks/opus-guard.js`: limites de ferramentas e de delegação.
 - `hooks/record-model.js`: modelo inicial da sessão.
 - `hooks/print-instructions.js`: injeta as instruções de modo multiplataforma.

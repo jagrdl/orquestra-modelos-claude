@@ -5,7 +5,7 @@
 | Modelo do seletor | Papel | Quem executa |
 | --- | --- | --- |
 | **Opus** | Só planeja: requisitos, contratos, critérios de aceite, divisão em unidades. Grava o plano e entrega a uma sessão Sonnet. | Nunca executa nem cria subagentes. |
-| **Sonnet** | Orquestra: despacha, acompanha, valida evidência, integra e reporta. Se a sessão começou no Sonnet, ele também planeja (curto). | Workers Haiku. |
+| **Sonnet** | Orquestra: despacha, acompanha, valida evidência, integra e reporta. Se a sessão começou no Sonnet, ele também planeja (curto). | Workers Haiku; em tarefa complexa demais para o Haiku, o subagente `orquestra:especialista-sonnet` (exceção). |
 | **Haiku** (subagentes) | Implementa: exploração, edição, comandos, testes, build, revisão. | Os agentes `orquestra:*`. |
 
 Motivo: o custo é contexto × turnos; o modelo mais caro só faz o que exige julgamento (o plano), o intermediário só coordena e o mais barato faz o trabalho iterativo.
@@ -26,9 +26,9 @@ Limite técnico: subagentes não criam subagentes. Por isso o Sonnet orquestrado
 - Decisões de produto e de contrato ficam com o coordenador; ambiguidade real volta ao usuário (ou ao Opus, se o plano veio dele).
 - Instruções do projeto, políticas de aprovação e skills da tarefa continuam valendo. Este arquivo define **quem faz**, não a definição de pronto. Quando uma skill mandar a sessão principal ler código, implementar ou testar, essa etapa vai para um worker Haiku.
 
-## Regra de modelos: subagentes são sempre Haiku 5.5
+## Regra de modelos: subagentes são Haiku 5.5, com uma exceção Sonnet
 
-Só o Sonnet cria subagentes, e apenas **Haiku 5.5**, variando o **esforço** (baixo/médio/alto). Ao usar `Agent`, passe `model: "haiku"` ou use um agente `orquestra:*` (todos fixam Haiku). Nunca Sonnet ou Opus como worker, nem `fork`.
+Só o Sonnet cria subagentes, e por padrão apenas **Haiku 5.5**, variando o **esforço** (baixo/médio/alto). Ao usar `Agent`, passe `model: "haiku"` ou use um agente `orquestra:*` (fixam o modelo). A **única exceção** é `orquestra:especialista-sonnet` (Sonnet, esforço alto), descrita abaixo. Nunca Opus como worker, nem `fork`.
 
 Como o Haiku é mais fraco: briefs pequenos e específicos, uma unidade por worker, mais esforço (não mais modelo) em tarefa difícil, e validação mais rigorosa da evidência, sobretudo em revisão, segurança e contratos.
 
@@ -44,10 +44,20 @@ Avalie cada unidade independente, não a feature inteira.
 | `orquestra:implementer` | Haiku, esforço médio | **Padrão:** bug comum, feature de API/UI bem delimitada, testes não triviais, padrão conhecido com algumas decisões. Explora o código ele mesmo. |
 | `orquestra:implementer-pesado` | Haiku, esforço alto | Cross-módulo ou cross-repo, depuração difícil, concorrência, integrações, migrations, segurança, ou falha real do `implementer` que exige novo raciocínio. |
 | `orquestra:reviewer` | Haiku, esforço alto, só leitura | Revisão crítica independente (PR, segurança, contrato front/back) quando o risco justificar. |
+| `orquestra:especialista-sonnet` | **Sonnet**, esforço alto | **Exceção:** implementar, revisar ou testar o que for complexo demais para o Haiku (ver abaixo). |
 
 - Agentes genéricos (`general-purpose`, `Explore`, `Plan`) herdam o modelo da sessão; sem `model: "haiku"` o hook bloqueia. Prefira os `orquestra:*`, que fixam modelo e esforço.
 - Não escale pelo tamanho: divida trabalho grande em unidades `implementer`/`executor`. Se um worker travar, primeiro dê o contexto que faltou, reduza o escopo ou mude a abordagem; depois suba o esforço (`implementer-pesado`). Não repita uma execução cara só para ter certeza.
-- Revisão, segurança e contratos também vão para Haiku (`reviewer`, esforço alto), mas o coordenador confere a evidência com mais rigor. Se o Haiku falhar, refaça a unidade menor e com esforço maior; não troque de modelo.
+- Revisão, segurança e contratos também vão para Haiku (`reviewer`, esforço alto), mas o coordenador confere a evidência com mais rigor. Se o Haiku falhar, refaça a unidade menor e com esforço maior (`implementer-pesado`); só depois disso considere a exceção abaixo.
+
+### Exceção: `orquestra:especialista-sonnet`
+
+O Sonnet pode implementar, revisar ou testar por meio do subagente `orquestra:especialista-sonnet` (Sonnet, esforço alto) em tarefa **complexa demais para o Haiku**: cross-módulo difícil, concorrência, pagamentos, segurança e isolamento entre tenants, depuração que o Haiku em esforço alto não resolveu, revisão ou teste de alto risco.
+
+- É exceção, nunca padrão. Use só **após falha real do Haiku** (incluindo `implementer-pesado`) ou quando o **risco justificar de início**.
+- O orquestrador **registra o motivo** (uma linha, no brief e no relatório final).
+- Uma unidade pequena e delimitada por worker, como com os demais.
+- Opus continua sem criar subagentes; o `especialista-sonnet` também não cria subagentes.
 
 ### Despachar e validar (Sonnet)
 
@@ -60,7 +70,7 @@ Avalie cada unidade independente, não a feature inteira.
 ### Travas automáticas (hook `opus-guard`)
 
 - **Opus:** bloqueia qualquer subagente (`Agent`/`Task`).
-- **Sonnet:** bloqueia subagente que não seja Haiku (`model` diferente de haiku, ou sem `model` e fora de `orquestra:*`) e `fork`.
+- **Sonnet:** permite subagente Haiku (`model: "haiku"` ou `orquestra:*`) **ou** o `especialista-sonnet`; bloqueia qualquer outro modelo (inclusive Sonnet em agente genérico ou em outro `orquestra:*`), sobrescrever o modelo do especialista por outro que não Sonnet, e `fork`.
 - **Opus e Sonnet:** bloqueiam `Write`/`Edit`/`MultiEdit`/`NotebookEdit` fora de `~/.claude`; leitura de arquivo inteiro acima de 200 linhas (leia por faixa); shell que não seja git/gh/busca leve; redirecionamento para arquivo; git que descarta ou reescreve (`reset`, `restore`, `stash`, `rebase`, `clean`…).
 - Acima de 900k tokens de contexto (limite de segurança, ajustável por `ORQUESTRA_OPUS_CONTEXT_LIMIT`), só ferramentas de delegação; peça ao usuário `/compact`. A auto-compactação nativa costuma agir antes disso.
 - Ao ser bloqueado, delegue. Não contorne por outra ferramenta, heredoc ou script.

@@ -33,7 +33,7 @@ const SHELL_ALLOW = new Set([
 const GIT_DENY = /\bgit\s+(reset|restore|checkout\s+--|clean|stash|rebase|apply|am|cherry-pick|revert|rm|mv)\b/i;
 
 const DELEGUE_OPUS = "Opus só planeja: grave o plano em ~/.claude/orquestra-plans/<nome>.md e entregue a uma sessão Sonnet (se o ambiente permitir iniciar uma nova sessão, use-a; caso contrário, peça /model sonnet), que orquestra os workers Haiku. Não contorne por outra ferramenta.";
-const DELEGUE_SONNET = "Delegue a um worker Haiku: orquestra:implementer (padrão; explora, implementa e valida), orquestra:executor (mecânico, comandos, git), orquestra:implementer-pesado (cross-módulo, depuração difícil, esforço alto), orquestra:reviewer (revisão crítica, esforço alto). Para correções, continue o mesmo worker com SendMessage. Peça relatório curto. Não contorne por outra ferramenta.";
+const DELEGUE_SONNET = "Delegue a um worker Haiku: orquestra:implementer (padrão; explora, implementa e valida), orquestra:executor (mecânico, comandos, git), orquestra:implementer-pesado (cross-módulo, depuração difícil, esforço alto), orquestra:reviewer (revisão crítica, esforço alto). Só se o Haiku falhar de verdade ou o risco justificar de início (pagamentos, segurança, isolamento entre tenants, concorrência difícil, revisão ou teste de alto risco): orquestra:especialista-sonnet (Sonnet, esforço alto), com o motivo registrado. Para correções, continue o mesmo worker com SendMessage. Peça relatório curto. Não contorne por outra ferramenta.";
 
 function deny(reason) {
   fs.writeSync(1, JSON.stringify({
@@ -132,8 +132,15 @@ function main(input) {
     if (ti.subagent_type === "fork") {
       deny("Fork herda o modelo e o contexto inteiro da sessão. Use um agente orquestra:* (Haiku) com brief autocontido.");
     }
+    // Exceção: o especialista Sonnet (esforço alto) é o único subagente não Haiku permitido.
+    if (/^(orquestra:)?especialista-sonnet$/.test(ti.subagent_type || "")) {
+      if (ti.model && !/sonnet/i.test(ti.model)) {
+        deny(`O especialista-sonnet roda em Sonnet; não sobrescreva o modelo com "${ti.model}". Para Haiku, use orquestra:implementer, implementer-pesado, executor ou reviewer.`);
+      }
+      return;
+    }
     if (ti.model && !/haiku/i.test(ti.model)) {
-      deny(`Subagente em "${ti.model}" não é permitido: só Haiku 5.5, variando o esforço. Use model: "haiku" (orquestra:executor, implementer, implementer-pesado ou reviewer).`);
+      deny(`Subagente em "${ti.model}" não é permitido: só Haiku 5.5 (orquestra:executor, implementer, implementer-pesado ou reviewer) ou, como exceção, orquestra:especialista-sonnet.`);
     }
     if (!ti.model && !/^orquestra:/.test(ti.subagent_type || "")) {
       deny('Subagente sem modelo herdaria o modelo da sessão. Passe model: "haiku" ou use um agente orquestra:*.');
