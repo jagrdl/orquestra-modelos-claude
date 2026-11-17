@@ -1,0 +1,14 @@
+{
+  "name": "orquestra-modelos-claude",
+  "owner": {
+    "name": "jagrdl"
+  },
+  "description": "Marketplace de orquestração de modelos para Claude Code, independente de projeto, linguagem e repositório.",
+  "plugins": [
+    {
+      "name": "orquestra",
+      "source": "./",
+      "description": "Orquestração genérica de tarefas: Opus planeja, Sonnet coordena e Haiku executa."
+    }
+  ]
+}
