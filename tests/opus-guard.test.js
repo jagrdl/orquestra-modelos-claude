@@ -84,6 +84,26 @@ t("Opus: qualquer subagente é negado (só o Sonnet despacha Haiku)", () => {
   assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "orquestra:reviewer" })));
   assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "general-purpose", model: "haiku" })));
 });
+t("Sonnet: especialista-sonnet passa (com ou sem prefixo, com model sonnet); override para Opus é negado", () => {
+  const s = sid("k"); start(s, "claude-sonnet-5-5");
+  assert.ok(!denied(agent(s, emptyTranscript, { subagent_type: "orquestra:especialista-sonnet" })));
+  assert.ok(!denied(agent(s, emptyTranscript, { subagent_type: "especialista-sonnet", model: "sonnet" })));
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "orquestra:especialista-sonnet", model: "opus" })));
+});
+t("Sonnet: Sonnet em agente genérico continua negado (a exceção é só do especialista)", () => {
+  const s = sid("l"); start(s, "claude-sonnet-5-5");
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "general-purpose", model: "sonnet" })));
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "orquestra:implementer", model: "sonnet" })));
+});
+t("Opus: especialista-sonnet também é negado (Opus nunca cria subagentes)", () => {
+  const s = sid("m"); start(s, "claude-opus-5-5");
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "orquestra:especialista-sonnet" })));
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "especialista-sonnet", model: "sonnet" })));
+});
+t("Sonnet: fork continua negado", () => {
+  const s = sid("n"); start(s, "claude-sonnet-5-5");
+  assert.ok(denied(agent(s, emptyTranscript, { subagent_type: "fork", model: "sonnet" })));
+});
 t("Haiku como sessão principal: subagente livre", () => {
   const s = sid("j"); start(s, "claude-haiku-5-5");
   assert.ok(!denied(agent(s, emptyTranscript, { subagent_type: "general-purpose", model: "sonnet" })));

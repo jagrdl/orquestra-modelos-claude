@@ -1,7 +1,7 @@
 {
   "name": "orquestra",
   "displayName": "Orquestra de modelos",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Orquestração de tarefas em qualquer projeto com Claude Code: Opus planeja, Sonnet coordena e Haiku executa.",
   "author": {
     "name": "jagrdl"
