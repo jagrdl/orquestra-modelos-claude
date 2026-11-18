@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "orquestra-modelos-claude": {
+      "source": {
+        "source": "github",
+        "repo": "jagrdl/orquestra-modelos-claude"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "orquestra@orquestra-modelos-claude": true
+  }
+}
